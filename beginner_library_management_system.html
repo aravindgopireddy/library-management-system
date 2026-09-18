@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simple Library Management System</title>
+    <!-- Use Tailwind CSS for easy, responsive styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Custom styles for a clean, modern look */
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f3f4f6; /* Light gray background */
+        }
+        .fade-in {
+            animation: fadeIn 0.3s ease-in-out;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+</head>
+<body class="text-gray-800">
+
+    <div class="container mx-auto p-4 max-w-4xl">
+        
+        <!-- Header -->
+        <header class="bg-blue-600 text-white p-6 rounded-lg shadow-md mb-8 text-center">
+            <h1 class="text-3xl font-bold">📚 Simple Library System</h1>
+            <p class="text-blue-100 mt-2">Manage your small book collection easily</p>
+        </header>
+
+        <!-- Main Content Grid -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+            
+            <!-- Left Column: Add New Book Form -->
+            <div class="md:col-span-1 bg-white p-6 rounded-lg shadow-md">
+                <h2 class="text-xl font-semibold mb-4 text-gray-700 border-b pb-2">Add New Book</h2>
+                
+                <form id="addBookForm" class="space-y-4">
+                    <div>
+                        <label for="bookTitle" class="block text-sm font-medium text-gray-700">Title</label>
+                        <input type="text" id="bookTitle" required
+                            class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                    </div>
+                    <div>
+                        <label for="bookAuthor" class="block text-sm font-medium text-gray-700">Author</label>
+                        <input type="text" id="bookAuthor" required
+                            class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                    </div>
+                    <button type="submit"
+                        class="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors">
+                        Add to Library
+                    </button>
+                </form>
+
+                <!-- Statistics Area -->
+                 <div class="mt-8 pt-4 border-t border-gray-200">
+                    <h3 class="text-lg font-medium text-gray-700 mb-2">Library Stats</h3>
+                    <div class="flex justify-between text-sm">
+                        <span>Total Books:</span>
+                        <span id="totalBooksCount" class="font-bold text-blue-600">0</span>
+                    </div>
+                     <div class="flex justify-between text-sm mt-1">
+                        <span>Books Checked Out:</span>
+                        <span id="borrowedBooksCount" class="font-bold text-orange-600">0</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Column: Book List -->
+            <div class="md:col-span-2 bg-white p-6 rounded-lg shadow-md">
+                <div class="flex justify-between items-center mb-4 border-b pb-2">
+                    <h2 class="text-xl font-semibold text-gray-700">Library Catalog</h2>
+                    <input type="text" id="searchInput" placeholder="Search books..." 
+                           class="px-3 py-1 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-blue-500">
+                </div>
+
+                <!-- Container for the book items -->
+                <div id="bookList" class="space-y-3">
+                    <!-- Books will be injected here by JavaScript -->
+                    <p class="text-gray-500 italic text-center py-4" id="emptyState">Your library is currently empty. Add a book to get started!</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        /* 
+         * JavaScript Logic for the Library Management System
+         */
+
+        // Initial state: Array to hold our book objects
+        // We start with a few sample books for demonstration
+        let library = [
+            { id: 1, title: "The Hobbit", author: "J.R.R. Tolkien", isBorrowed: false },
+            { id: 2, title: "1984", author: "George Orwell", isBorrowed: true }
+        ];
+
+        // Unique ID generator for new books
+        let nextId = 3;
+
+        // DOM Elements references
+        const bookListEl = document.getElementById('bookList');
+        const addBookForm = document.getElementById('addBookForm');
+        const titleInput = document.getElementById('bookTitle');
+        const authorInput = document.getElementById('bookAuthor');
+        const searchInput = document.getElementById('searchInput');
+        const emptyStateEl = document.getElementById('emptyState');
+        const totalBooksCountEl = document.getElementById('totalBooksCount');
+        const borrowedBooksCountEl = document.getElementById('borrowedBooksCount');
+
+        /**
+         * Function to render the list of books to the screen
+         * @param {Array} booksToRender - The array of book objects to display
+         */
+        function renderBooks(booksToRender) {
+            // Clear current list content
+            bookListEl.innerHTML = '';
+            
+            updateStats();
+
+            // Check if there are books to show
+            if (booksToRender.length === 0) {
+                bookListEl.appendChild(emptyStateEl);
+                emptyStateEl.style.display = 'block';
+                // If filtering resulted in 0 items, change the message
+                if(library.length > 0) {
+                    emptyStateEl.textContent = "No books match your search.";
+                } else {
+                    emptyStateEl.textContent = "Your library is currently empty. Add a book to get started!";
+                }
+                return;
+            }
+
+            emptyStateEl.style.display = 'none';
+
+            // Loop through each book and create HTML for it
+            booksToRender.forEach(book => {
+                const bookCard = document.createElement('div');
+                // Use Tailwind classes to style the individual book card
+                bookCard.className = `flex justify-between items-center p-4 border rounded-md shadow-sm fade-in ${book.isBorrowed ? 'bg-orange-50 border-orange-200' : 'bg-gray-50 border-gray-200'}`;
+                
+                // Construct the inner HTML of the book card
+                bookCard.innerHTML = `
+                    <div class="flex-1 min-w-0">
+                        <h3 class="text-lg font-medium text-gray-900 truncate">${book.title}</h3>
+                        <p class="text-sm text-gray-500 truncate">by ${book.author}</p>
+                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium mt-1 ${book.isBorrowed ? 'bg-orange-100 text-orange-800' : 'bg-green-100 text-green-800'}">
+                            ${book.isBorrowed ? 'Borrowed' : 'Available'}
+                        </span>
+                    </div>
+                    <div class="ml-4 flex-shrink-0 flex gap-2">
+                        <!-- Action Button (Borrow/Return) -->
+                        <button onclick="toggleBorrowStatus(${book.id})" 
+                                class="px-3 py-1 text-sm font-medium rounded-md text-white transition-colors ${book.isBorrowed ? 'bg-blue-500 hover:bg-blue-600' : 'bg-orange-500 hover:bg-orange-600'}">
+                            ${book.isBorrowed ? 'Return' : 'Borrow'}
+                        </button>
+                        <!-- Delete Button -->
+                        <button onclick="deleteBook(${book.id})" 
+                                class="px-3 py-1 text-sm font-medium rounded-md text-red-600 bg-red-100 hover:bg-red-200 transition-colors">
+                            Remove
+                        </button>
+                    </div>
+                `;
+                
+                // Add the constructed card to the list container
+                bookListEl.appendChild(bookCard);
+            });
+        }
+
+        /**
+         * Updates the library statistics numbers
+         */
+        function updateStats() {
+            totalBooksCountEl.textContent = library.length;
+            const borrowedCount = library.filter(book => book.isBorrowed).length;
+            borrowedBooksCountEl.textContent = borrowedCount;
+        }
+
+        /**
+         * Event Listener for the Add Book Form submission
+         */
+        addBookForm.addEventListener('submit', function(e) {
+            e.preventDefault(); // Prevent page reload on form submit
+
+            const title = titleInput.value.trim();
+            const author = authorInput.value.trim();
+
+            if (title && author) {
+                // Create a new book object
+                const newBook = {
+                    id: nextId++,
+                    title: title,
+                    author: author,
+                    isBorrowed: false // Default to available when added
+                };
+
+                // Add to our data array
+                library.push(newBook);
+
+                // Clear input fields
+                titleInput.value = '';
+                authorInput.value = '';
+
+                // Reset search if active so the new book is visible
+                searchInput.value = '';
+                
+                // Re-render the list
+                renderBooks(library);
+            }
+        });
+
+        /**
+         * Function to change the borrowed status of a book
+         * @param {number} bookId - The ID of the book to toggle
+         */
+        window.toggleBorrowStatus = function(bookId) {
+            // Find the book in the array
+            const book = library.find(b => b.id === bookId);
+            if (book) {
+                // Flip the boolean value
+                book.isBorrowed = !book.isBorrowed;
+                // Re-render to show changes
+                renderBooks(library);
+                // Also trigger search filter just in case search is active
+                triggerSearch();
+            }
+        };
+
+        /**
+         * Function to completely remove a book from the library
+         * @param {number} bookId - The ID of the book to remove
+         */
+        window.deleteBook = function(bookId) {
+            // Confirm before deleting (Optional, but good practice. Using a custom modal is better than confirm() usually, but kept simple here without using confirm())
+            // Filter out the book with the matching ID
+            library = library.filter(b => b.id !== bookId);
+            
+            // Re-render
+            renderBooks(library);
+            triggerSearch();
+        };
+
+        /**
+         * Event Listener for the Search Input
+         */
+        searchInput.addEventListener('input', triggerSearch);
+
+        function triggerSearch() {
+            const searchTerm = searchInput.value.toLowerCase();
+            
+            // Filter the library array based on title or author
+            const filteredBooks = library.filter(book => {
+                return book.title.toLowerCase().includes(searchTerm) || 
+                       book.author.toLowerCase().includes(searchTerm);
+            });
+            
+            // Render only the filtered results
+            renderBooks(filteredBooks);
+        }
+
+        // Initialize the app by rendering the default list on load
+        renderBooks(library);
+
+    </script>
+</body>
+</html>
